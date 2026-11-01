@@ -74,7 +74,10 @@ function App() {
   // New State
   const [reportedIssues, setReportedIssues] = useState(() => {
     const saved = localStorage.getItem('reportedIssues');
-    return saved ? JSON.parse(saved) : [
+    const parsed = saved ? JSON.parse(saved) : null;
+    // Reset if old data doesn't have stable seeds yet
+    if (parsed && parsed.length >= 4) return parsed;
+    return [
       {
         id: 'seed-1',
         name: 'Main St Water Leak',
