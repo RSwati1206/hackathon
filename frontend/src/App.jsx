@@ -58,6 +58,19 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState(null);
   
+  // Map style toggle
+  const [mapStyle, setMapStyle] = useState('dark');
+  const tileLayers = {
+    dark: {
+      url: 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png',
+      attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    },
+    light: {
+      url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }
+  };
+
   // New State
   const [reportedIssues, setReportedIssues] = useState(() => {
     const saved = localStorage.getItem('reportedIssues');
@@ -84,6 +97,54 @@ function App() {
         description: 'Large pothole forming on the fast lane. Risk of vehicle damage.',
         severity: 'Medium',
         reporter: 'User-422',
+        timestamp: new Date().toISOString()
+      },
+      {
+        id: 'seed-3',
+        name: 'NH44 Highway Bridge',
+        type: 'bridge',
+        status: 'stable',
+        lat: 13.0200,
+        lng: 77.5500,
+        description: 'Regular inspection passed. Structural integrity confirmed.',
+        severity: 'Low',
+        reporter: 'Inspection Unit',
+        timestamp: new Date().toISOString()
+      },
+      {
+        id: 'seed-4',
+        name: 'Hebbal Flyover',
+        type: 'bridge',
+        status: 'stable',
+        lat: 13.0350,
+        lng: 77.5970,
+        description: 'All systems normal. Load capacity within limits.',
+        severity: 'Low',
+        reporter: 'Auto-Sensor',
+        timestamp: new Date().toISOString()
+      },
+      {
+        id: 'seed-5',
+        name: 'Whitefield Water Main',
+        type: 'pipeline',
+        status: 'stable',
+        lat: 12.9698,
+        lng: 77.7500,
+        description: 'Flow rate and pressure normal. No leaks detected.',
+        severity: 'Low',
+        reporter: 'Sensor-WF-7',
+        timestamp: new Date().toISOString()
+      },
+      {
+        id: 'seed-6',
+        name: 'Koramangala Road Sector',
+        type: 'road',
+        status: 'stable',
+        lat: 12.9352,
+        lng: 77.6245,
+        description: 'Surface condition good. No maintenance required.',
+        severity: 'Low',
+        reporter: 'Road Dept.',
         timestamp: new Date().toISOString()
       }
     ];
@@ -235,8 +296,14 @@ function App() {
   return (
     <div className="dashboard-container">
       <header className="header">
-        <h1>InfraWatch</h1>
-        <div style={{ display: 'flex', gap: '1rem', color: 'var(--text-muted)' }}>
+        <div className="logo-container">
+          <span className="logo-icon">⬡</span>
+          <h1 className="logo-text">
+            <span className="logo-infra">INFRA</span><span className="logo-watch">WATCH</span>
+          </h1>
+          <span className="logo-badge">LIVE</span>
+        </div>
+        <div style={{ display: 'flex', gap: '1rem', color: 'var(--text-muted)', alignItems: 'center' }}>
           <span><Activity size={18} style={{ verticalAlign: 'middle', marginRight: '5px' }} /> Live Diagnostics</span>
           <span>{new Date().toLocaleDateString()}</span>
         </div>
@@ -254,6 +321,13 @@ function App() {
             </button>
             <button className="control-btn" onClick={() => setActiveFilter('all')}>
               <Filter size={18} /> Reset Filters
+            </button>
+            <button
+              className="control-btn map-toggle-btn"
+              onClick={() => setMapStyle(mapStyle === 'dark' ? 'light' : 'dark')}
+              title="Toggle map style"
+            >
+              {mapStyle === 'dark' ? '☀️ Light Map' : '🌙 Dark Map'}
             </button>
           </div>
 
@@ -274,8 +348,9 @@ function App() {
             <MapContainer center={userLocation} zoom={11} style={{ height: '100%', width: '100%' }}>
               <MapEvents />
               <TileLayer
-                url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                key={mapStyle}
+                url={tileLayers[mapStyle].url}
+                attribution={tileLayers[mapStyle].attribution}
               />
               <Marker position={userLocation} icon={userLocationIcon}>
                 <Popup>Your Current Location</Popup>
