@@ -1,0 +1,22 @@
+[
+  {"id": "B-01", "name": "Bridge Alpha", "type": "bridge", "lat": 40.7128, "lng": -74.0060, "age": 45, "load": 85, "inspection_score": 45, "last_maintenance_years": 3},
+  {"id": "B-02", "name": "Bridge Beta", "type": "bridge", "lat": 40.7200, "lng": -73.9900, "age": 20, "load": 40, "inspection_score": 90, "last_maintenance_years": 1},
+  {"id": "R-01", "name": "Highway 101", "type": "road", "lat": 40.7300, "lng": -73.9800, "age": 15, "load": 60, "inspection_score": 75, "last_maintenance_years": 2},
+  {"id": "R-02", "name": "Main Street", "type": "road", "lat": 40.7400, "lng": -73.9700, "age": 35, "load": 90, "inspection_score": 40, "last_maintenance_years": 4},
+  {"id": "P-01", "name": "Water Pipe A", "type": "pipeline", "lat": 40.7500, "lng": -73.9600, "age": 25, "load": 70, "inspection_score": 85, "last_maintenance_years": 2},
+  {"id": "P-02", "name": "Gas Pipe B", "type": "pipeline", "lat": 40.7600, "lng": -73.9500, "age": 40, "load": 88, "inspection_score": 30, "last_maintenance_years": 5},
+  {"id": "B-03", "name": "Bridge Gamma", "type": "bridge", "lat": 40.7700, "lng": -73.9400, "age": 10, "load": 30, "inspection_score": 95, "last_maintenance_years": 0.5},
+  {"id": "R-03", "name": "Avenue X", "type": "road", "lat": 40.7800, "lng": -73.9300, "age": 28, "load": 65, "inspection_score": 60, "last_maintenance_years": 3},
+  {"id": "P-03", "name": "Sewer Line C", "type": "pipeline", "lat": 40.7900, "lng": -73.9200, "age": 12, "load": 50, "inspection_score": 80, "last_maintenance_years": 1.5},
+  {"id": "B-04", "name": "Bridge Delta", "type": "bridge", "lat": 40.8000, "lng": -73.9100, "age": 38, "load": 75, "inspection_score": 55, "last_maintenance_years": 3.5},
+  {"id": "R-04", "name": "Boulevard Y", "type": "road", "lat": 40.8100, "lng": -73.9000, "age": 5, "load": 20, "inspection_score": 98, "last_maintenance_years": 0.2},
+  {"id": "P-04", "name": "Steam Pipe D", "type": "pipeline", "lat": 40.8200, "lng": -73.8900, "age": 50, "load": 95, "inspection_score": 20, "last_maintenance_years": 6},
+  {"id": "B-05", "name": "Bridge Epsilon", "type": "bridge", "lat": 40.8300, "lng": -73.8800, "age": 22, "load": 55, "inspection_score": 70, "last_maintenance_years": 2},
+  {"id": "R-05", "name": "Street Z", "type": "road", "lat": 40.8400, "lng": -73.8700, "age": 32, "load": 82, "inspection_score": 45, "last_maintenance_years": 4},
+  {"id": "P-05", "name": "Water Pipe E", "type": "pipeline", "lat": 40.8500, "lng": -73.8600, "age": 18, "load": 45, "inspection_score": 88, "last_maintenance_years": 1},
+  {"id": "B-06", "name": "Bridge Zeta", "type": "bridge", "lat": 40.8600, "lng": -73.8500, "age": 48, "load": 80, "inspection_score": 35, "last_maintenance_years": 4.5},
+  {"id": "R-06", "name": "Expressway 1", "type": "road", "lat": 40.8700, "lng": -73.8400, "age": 8, "load": 85, "inspection_score": 92, "last_maintenance_years": 0.8},
+  {"id": "P-06", "name": "Gas Pipe F", "type": "pipeline", "lat": 40.8800, "lng": -73.8300, "age": 35, "load": 60, "inspection_score": 65, "last_maintenance_years": 2.5},
+  {"id": "B-07", "name": "Bridge Eta", "type": "bridge", "lat": 40.8900, "lng": -73.8200, "age": 15, "load": 50, "inspection_score": 82, "last_maintenance_years": 1.2},
+  {"id": "R-07", "name": "Local Road 2", "type": "road", "lat": 40.9000, "lng": -73.8100, "age": 42, "load": 70, "inspection_score": 50, "last_maintenance_years": 5}
+]
