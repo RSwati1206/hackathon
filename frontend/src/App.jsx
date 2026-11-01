@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Line } from 'react-chartjs-2';
@@ -14,7 +14,21 @@ import {
   Legend,
   Filler
 } from 'chart.js';
-import { Activity, AlertTriangle, CheckCircle, ShieldAlert, Plus, MapPin, X, Trash2, Filter } from 'lucide-react';
+import { 
+  Activity, 
+  AlertTriangle, 
+  CheckCircle, 
+  ShieldAlert, 
+  Plus, 
+  MapPin, 
+  X, 
+  Trash2, 
+  Filter,
+  Layers,
+  Radio,
+  Navigation,
+  RefreshCw
+} from 'lucide-react';
 import rawAssets from './data.json';
 import './index.css';
 
@@ -29,6 +43,17 @@ ChartJS.register(
   Filler
 );
 
+// Map view controller component
+function ChangeMapView({ center, zoom }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center) {
+      map.setView(center, zoom || 11);
+    }
+  }, [center, zoom, map]);
+  return null;
+}
+
 // User Location Icon
 const userLocationIcon = L.divIcon({
   className: 'user-marker',
@@ -37,7 +62,7 @@ const userLocationIcon = L.divIcon({
   iconAnchor: [11, 11]
 });
 
-// Custom Leaflet Icons
+// Custom Leaflet Icons with status colors
 const createIcon = (status) => {
   const colorMap = {
     stable: 'var(--color-stable)',
@@ -53,17 +78,78 @@ const createIcon = (status) => {
   });
 };
 
+// Fallback deterministic RUL prediction engine if backend is offline
+const calculateLocalRul = (asset) => {
+  const age = asset.age || 0;
+  const load = asset.load || 0;
+  const inspection_score = asset.inspection_score !== undefined ? asset.inspection_score : 100;
+  const last_maintenance = asset.last_maintenance_years || 0;
+  const asset_type = asset.type || 'bridge';
+
+  const base_rul = asset_type === 'bridge' ? 50 : (asset_type === 'road' ? 40 : 30);
+
+  const age_penalty = age * 0.5;
+  const load_penalty = load * 0.2;
+  const maintenance_penalty = last_maintenance * 2;
+  const inspection_penalty = (100 - inspection_score) * 0.4;
+
+  let estimated_rul = base_rul - age_penalty - load_penalty - maintenance_penalty - inspection_penalty;
+  estimated_rul = Math.max(0, Math.round(estimated_rul * 10) / 10);
+
+  let anomaly = false;
+  const reasons = [];
+  if (load > 80) {
+    anomaly = true;
+    reasons.push("High load");
+  }
+  if (last_maintenance >= 3) {
+    anomaly = true;
+    reasons.push(`${last_maintenance}yr since maintenance`);
+  }
+  if (inspection_score < 50) {
+    anomaly = true;
+    reasons.push("Poor inspection score");
+  }
+  if (age > (base_rul * 0.8)) {
+    anomaly = true;
+    reasons.push("Near end of design life");
+  }
+    
+  let status = "stable";
+  let explanation = "";
+  if (estimated_rul <= 3 || anomaly) {
+    status = "critical";
+    if (reasons.length) {
+      explanation = `${asset.name}: ${reasons.join(' + ')} → Failure risk in ~${Math.round(estimated_rul * 12)} months`;
+    }
+  } else if (estimated_rul <= 7) {
+    status = "watch";
+    explanation = `${asset.name}: Needs attention, ${last_maintenance}yr since maintenance → Evaluate in ~${Math.round((estimated_rul - 2) * 12)} months`;
+  }
+
+  return {
+    ...asset,
+    estimated_rul,
+    anomaly,
+    status,
+    explanation
+  };
+};
+
 function App() {
+  const defaultBengaluru = [12.9716, 77.5946];
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState(null);
+  const [mapCenter, setMapCenter] = useState(defaultBengaluru);
+  const [mapZoom, setMapZoom] = useState(11);
   
   // Map style toggle
   const [mapStyle, setMapStyle] = useState('dark');
   const tileLayers = {
     dark: {
-      url: 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png',
-      attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
     },
     light: {
       url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -71,91 +157,80 @@ function App() {
     }
   };
 
-  // New State
+  // Realistic Bengaluru Seeded Incidents (scattered across major urban corridors)
+  const defaultSeeds = [
+    {
+      id: 'seed-blr-1',
+      name: 'Outer Ring Road Water Main Rupture',
+      type: 'pipeline',
+      status: 'critical',
+      lat: 12.9352,
+      lng: 77.6881,
+      description: 'Major underground pipeline breach near Bellandur junction. Substantial water accumulation on service lane.',
+      severity: 'High',
+      reporter: 'BWSSB Rapid Action',
+      timestamp: new Date().toISOString()
+    },
+    {
+      id: 'seed-blr-2',
+      name: 'Ejipura Inner Ring Road Asphalt Sinkhole',
+      type: 'road',
+      status: 'critical',
+      lat: 12.9412,
+      lng: 77.6279,
+      description: 'Cavitation and subsidence near flyover support column. Immediate diversion needed.',
+      severity: 'High',
+      reporter: 'BBMP Control Room',
+      timestamp: new Date().toISOString()
+    },
+    {
+      id: 'seed-blr-3',
+      name: 'Hebbal Flyover Deck Expansion Joint Stress',
+      type: 'bridge',
+      status: 'watch',
+      lat: 13.0421,
+      lng: 77.5912,
+      description: 'Sensor telemetry indicates accelerated vibration harmonics under peak hour freight traffic.',
+      severity: 'Medium',
+      reporter: 'Sensor Array S-04',
+      timestamp: new Date().toISOString()
+    },
+    {
+      id: 'seed-blr-4',
+      name: 'Kengeri Rail Overbridge Pavement Distress',
+      type: 'bridge',
+      status: 'watch',
+      lat: 12.9082,
+      lng: 77.4841,
+      description: 'Surface cracking along bridge ramp approach lane. Requires sealing prior to monsoon.',
+      severity: 'Medium',
+      reporter: 'Traffic Division West',
+      timestamp: new Date().toISOString()
+    },
+    {
+      id: 'seed-blr-5',
+      name: 'Indiranagar 100ft Road Gas Duct Pressure Check',
+      type: 'pipeline',
+      status: 'stable',
+      lat: 12.9734,
+      lng: 77.6415,
+      description: 'Preventive ultrasonic inspection completed. Secondary pressure valve nominal.',
+      severity: 'Low',
+      reporter: 'GAIL Tech Crew',
+      timestamp: new Date().toISOString()
+    }
+  ];
+
   const [reportedIssues, setReportedIssues] = useState(() => {
-    const saved = localStorage.getItem('reportedIssues');
-    const parsed = saved ? JSON.parse(saved) : null;
-    // Reset if old data doesn't have stable seeds yet
-    if (parsed && parsed.length >= 4) return parsed;
-    return [
-      {
-        id: 'seed-1',
-        name: 'Main St Water Leak',
-        type: 'pipeline',
-        status: 'critical',
-        lat: 12.9716,
-        lng: 77.5946,
-        description: 'Large pipe burst near the intersection. Water pressure dropping in sector 4.',
-        severity: 'High',
-        reporter: 'System Admin',
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 'seed-2',
-        name: 'Outer Ring Road Pothole',
-        type: 'road',
-        status: 'watch',
-        lat: 12.9250,
-        lng: 77.6750,
-        description: 'Large pothole forming on the fast lane. Risk of vehicle damage.',
-        severity: 'Medium',
-        reporter: 'User-422',
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 'seed-3',
-        name: 'NH44 Highway Bridge',
-        type: 'bridge',
-        status: 'stable',
-        lat: 13.0200,
-        lng: 77.5500,
-        description: 'Regular inspection passed. Structural integrity confirmed.',
-        severity: 'Low',
-        reporter: 'Inspection Unit',
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 'seed-4',
-        name: 'Hebbal Flyover',
-        type: 'bridge',
-        status: 'stable',
-        lat: 13.0350,
-        lng: 77.5970,
-        description: 'All systems normal. Load capacity within limits.',
-        severity: 'Low',
-        reporter: 'Auto-Sensor',
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 'seed-5',
-        name: 'Whitefield Water Main',
-        type: 'pipeline',
-        status: 'stable',
-        lat: 12.9698,
-        lng: 77.7500,
-        description: 'Flow rate and pressure normal. No leaks detected.',
-        severity: 'Low',
-        reporter: 'Sensor-WF-7',
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 'seed-6',
-        name: 'Koramangala Road Sector',
-        type: 'road',
-        status: 'stable',
-        lat: 12.9352,
-        lng: 77.6245,
-        description: 'Surface condition good. No maintenance required.',
-        severity: 'Low',
-        reporter: 'Road Dept.',
-        timestamp: new Date().toISOString()
-      }
-    ];
+    const saved = localStorage.getItem('reportedIssues_blr_v3');
+    return saved ? JSON.parse(saved) : defaultSeeds;
   });
+
   const [reportMode, setReportMode] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCoords, setSelectedCoords] = useState(null);
   const [activeFilter, setActiveFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
   const [newIssue, setNewIssue] = useState({
     name: '',
     type: 'bridge',
@@ -164,26 +239,23 @@ function App() {
     reporter: ''
   });
 
-  // Fetch Data & User Location
+  // Fetch Data & User Location with Bengaluru centering
   useEffect(() => {
-    const fetchData = async (lat, lng) => {
+    const loadData = async () => {
       try {
-        const adjustedAssets = rawAssets.map(asset => ({
-          ...asset,
-          lat: lat + (asset.lat - 40.78),
-          lng: lng + (asset.lng - (-73.9))
-        }));
-
         const response = await fetch('http://localhost:5000/api/predict_all', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ assets: adjustedAssets })
+          body: JSON.stringify({ assets: rawAssets })
         });
+        if (!response.ok) throw new Error('API server returned error');
         const data = await response.json();
         setAssets(data);
         setLoading(false);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.warn("Backend API unavailable, using local deterministic predictive engine:", error);
+        const localData = rawAssets.map(calculateLocalRul);
+        setAssets(localData);
         setLoading(false);
       }
     };
@@ -192,24 +264,33 @@ function App() {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          setUserLocation([latitude, longitude]);
-          fetchData(latitude, longitude);
+          // If within Karnataka / Bengaluru bounds, track location
+          if (latitude >= 12.5 && latitude <= 13.5 && longitude >= 77.0 && longitude <= 78.0) {
+            setUserLocation([latitude, longitude]);
+            setMapCenter([latitude, longitude]);
+          } else {
+            setUserLocation(defaultBengaluru);
+            setMapCenter(defaultBengaluru);
+          }
+          loadData();
         },
         (error) => {
-          console.error("Error getting location:", error);
-          setUserLocation([40.78, -73.9]);
-          fetchData(40.78, -73.9);
+          console.warn("Geolocation fallback to Bengaluru:", error);
+          setUserLocation(defaultBengaluru);
+          setMapCenter(defaultBengaluru);
+          loadData();
         }
       );
     } else {
-      setUserLocation([40.78, -73.9]);
-      fetchData(40.78, -73.9);
+      setUserLocation(defaultBengaluru);
+      setMapCenter(defaultBengaluru);
+      loadData();
     }
   }, []);
 
   // Persist Reported Issues
   useEffect(() => {
-    localStorage.setItem('reportedIssues', JSON.stringify(reportedIssues));
+    localStorage.setItem('reportedIssues_blr_v3', JSON.stringify(reportedIssues));
   }, [reportedIssues]);
 
   // Map Click Handler Component
@@ -248,22 +329,31 @@ function App() {
 
   const allAssets = [...assets, ...reportedIssues];
   
-  const filteredAssets = activeFilter === 'all' 
-    ? allAssets 
-    : allAssets.filter(a => a.status === activeFilter);
+  // Combined filter for status and type
+  const filteredAssets = allAssets.filter(asset => {
+    const matchesStatus = activeFilter === 'all' || asset.status === activeFilter;
+    const matchesType = typeFilter === 'all' || asset.type === typeFilter;
+    return matchesStatus && matchesType;
+  });
 
   const criticalAssets = allAssets.filter(a => a.status === 'critical');
   const watchAssets = allAssets.filter(a => a.status === 'watch');
   const stableAssets = allAssets.filter(a => a.status === 'stable');
 
-  const alerts = allAssets.filter(a => a.status !== 'stable')
+  // Overall City Grid Health Index (0 - 100)
+  const healthScore = allAssets.length > 0 
+    ? Math.round(((stableAssets.length * 100) + (watchAssets.length * 60) + (criticalAssets.length * 20)) / allAssets.length)
+    : 85;
+
+  const alerts = allAssets
+    .filter(a => a.status !== 'stable')
     .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
 
   const chartData = {
     labels: ['Bridges', 'Roads', 'Pipelines'],
     datasets: [
       {
-        label: 'Average Health Index',
+        label: 'Active Infrastructure Count',
         data: [
           allAssets.filter(a => a.type === 'bridge').length,
           allAssets.filter(a => a.type === 'road').length,
@@ -305,14 +395,176 @@ function App() {
             <span className="logo-infra">INFRA</span><span className="logo-watch">WATCH</span>
           </h1>
           <span className="logo-badge">LIVE</span>
+          <span className="city-tag" style={{ marginLeft: '0.5rem' }}>BENGALURU</span>
         </div>
-        <div style={{ display: 'flex', gap: '1rem', color: 'var(--text-muted)', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '1.25rem', color: 'var(--text-muted)', alignItems: 'center', fontSize: '0.9rem' }}>
           <span><Activity size={18} style={{ verticalAlign: 'middle', marginRight: '5px' }} /> Live Diagnostics</span>
-          <span>{new Date().toLocaleDateString()}</span>
+          <span>{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
         </div>
       </header>
 
       <div className="main-content">
+        {/* Left Dashboard Panel */}
+        <div className="left-dashboard">
+          {/* Executive Overview & Health Score */}
+          <div className="card left-card">
+            <div className="card-header-badge">
+              <span className="live-indicator"><span className="pulse-dot"></span> LIVE MONITORING</span>
+              <span className="city-tag">BBMP REGION</span>
+            </div>
+            <h2 className="overview-title">Urban Infrastructure Grid</h2>
+            <p className="overview-subtitle">Real-time predictive health, sensor diagnostics, and failure risk estimation across Bengaluru</p>
+            
+            <div className="health-score-container">
+              <div className="health-score-header">
+                <span>Grid Health Index</span>
+                <span 
+                  className="health-score-value" 
+                  style={{ 
+                    color: healthScore >= 75 ? 'var(--color-stable)' : (healthScore >= 50 ? 'var(--color-watch)' : 'var(--color-critical)') 
+                  }}
+                >
+                  {healthScore}%
+                </span>
+              </div>
+              <div className="health-progress-bar">
+                <div 
+                  className="health-progress-fill" 
+                  style={{ 
+                    width: `${healthScore}%`,
+                    background: healthScore >= 75 
+                      ? 'linear-gradient(90deg, #10b981, #34d399)' 
+                      : (healthScore >= 50 ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #ef4444, #f87171)')
+                  }}
+                ></div>
+              </div>
+              <div className="health-stats-row">
+                <span><strong style={{ color: 'var(--color-critical)' }}>{criticalAssets.length}</strong> Critical</span>
+                <span><strong style={{ color: 'var(--color-watch)' }}>{watchAssets.length}</strong> Watch</span>
+                <span><strong style={{ color: 'var(--color-stable)' }}>{stableAssets.length}</strong> Stable</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Asset Category Filters */}
+          <div className="card left-card">
+            <h3><Layers size={18} /> Asset Categories</h3>
+            <div className="category-filters">
+              <button 
+                className={`cat-btn ${typeFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setTypeFilter('all')}
+              >
+                <div className="cat-icon-name">
+                  <Activity size={16} /> All Monitored Nodes
+                </div>
+                <span className="cat-count">{allAssets.length}</span>
+              </button>
+
+              <button 
+                className={`cat-btn ${typeFilter === 'bridge' ? 'active' : ''}`}
+                onClick={() => setTypeFilter(typeFilter === 'bridge' ? 'all' : 'bridge')}
+              >
+                <div className="cat-icon-name">
+                  <span className="type-badge-dot bridge"></span> Bridges & Flyovers
+                </div>
+                <span className="cat-count">{allAssets.filter(a => a.type === 'bridge').length}</span>
+              </button>
+
+              <button 
+                className={`cat-btn ${typeFilter === 'road' ? 'active' : ''}`}
+                onClick={() => setTypeFilter(typeFilter === 'road' ? 'all' : 'road')}
+              >
+                <div className="cat-icon-name">
+                  <span className="type-badge-dot road"></span> Arterial Corridors
+                </div>
+                <span className="cat-count">{allAssets.filter(a => a.type === 'road').length}</span>
+              </button>
+
+              <button 
+                className={`cat-btn ${typeFilter === 'pipeline' ? 'active' : ''}`}
+                onClick={() => setTypeFilter(typeFilter === 'pipeline' ? 'all' : 'pipeline')}
+              >
+                <div className="cat-icon-name">
+                  <span className="type-badge-dot pipeline"></span> Water & Gas Mains
+                </div>
+                <span className="cat-count">{allAssets.filter(a => a.type === 'pipeline').length}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Real-time Telemetry Sensors */}
+          <div className="card left-card">
+            <h3><Radio size={18} color="var(--accent)" /> Sensor Telemetry</h3>
+            <div className="telemetry-list">
+              <div className="telemetry-item">
+                <div className="telemetry-meta">
+                  <span className="tel-name">Structural Strain</span>
+                  <span className="tel-val nominal">0.042 µε</span>
+                </div>
+                <div className="telemetry-status">Bridges Nominal (&lt; 0.10 µε)</div>
+              </div>
+
+              <div className="telemetry-item">
+                <div className="telemetry-meta">
+                  <span className="tel-name">Hydraulic Pressure</span>
+                  <span className="tel-val nominal">4.2 Bar</span>
+                </div>
+                <div className="telemetry-status">Water Pipelines Flow Normal</div>
+              </div>
+
+              <div className="telemetry-item">
+                <div className="telemetry-meta">
+                  <span className="tel-name">Vibration Harmonics</span>
+                  <span className="tel-val warning">1.82 Hz</span>
+                </div>
+                <div className="telemetry-status">Elevated near Silk Board & ORR</div>
+              </div>
+
+              <div className="telemetry-item">
+                <div className="telemetry-meta">
+                  <span className="tel-name">AI Predictive Engine</span>
+                  <span className="tel-val online">ONLINE</span>
+                </div>
+                <div className="telemetry-status">Weighted RUL Multi-Factor v2.1</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Dispatch & Map Actions */}
+          <div className="card left-card">
+            <h3><Navigation size={18} /> Quick Dispatch & View</h3>
+            <div className="quick-actions-grid">
+              <button 
+                className="quick-action-btn"
+                onClick={() => {
+                  setMapCenter([...defaultBengaluru]);
+                  setMapZoom(11);
+                }}
+              >
+                <MapPin size={15} /> Central Bengaluru
+              </button>
+
+              <button 
+                className={`quick-action-btn ${activeFilter === 'critical' ? 'active-critical' : ''}`}
+                onClick={() => setActiveFilter(activeFilter === 'critical' ? 'all' : 'critical')}
+              >
+                <AlertTriangle size={15} color="var(--color-critical)" /> Critical Only
+              </button>
+
+              <button 
+                className="quick-action-btn"
+                onClick={() => {
+                  setActiveFilter('all');
+                  setTypeFilter('all');
+                }}
+              >
+                <RefreshCw size={15} /> Reset All Filters
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Center Map Section */}
         <div className="map-section">
           <div className="map-controls">
             <button 
@@ -322,7 +574,13 @@ function App() {
               {reportMode ? <X size={18} /> : <Plus size={18} />}
               {reportMode ? 'Cancel Reporting' : 'Report Incident'}
             </button>
-            <button className="control-btn" onClick={() => setActiveFilter('all')}>
+            <button 
+              className="control-btn" 
+              onClick={() => {
+                setActiveFilter('all');
+                setTypeFilter('all');
+              }}
+            >
               <Filter size={18} /> Reset Filters
             </button>
             <button
@@ -337,9 +595,9 @@ function App() {
           {reportMode && <div className="report-hint">Click anywhere on the map to mark an incident</div>}
 
           <div className="map-legend">
-            <div className="legend-item"><div className="dot" style={{ background: 'var(--color-critical)' }}></div> Critical Risk</div>
-            <div className="legend-item"><div className="dot" style={{ background: 'var(--color-watch)' }}></div> Warning / Watch</div>
-            <div className="legend-item"><div className="dot" style={{ background: 'var(--color-stable)' }}></div> Stable / Clear</div>
+            <div className="legend-item"><div className="dot" style={{ background: 'var(--color-critical)' }}></div> Critical Risk ({criticalAssets.length})</div>
+            <div className="legend-item"><div className="dot" style={{ background: 'var(--color-watch)' }}></div> Warning / Watch ({watchAssets.length})</div>
+            <div className="legend-item"><div className="dot" style={{ background: 'var(--color-stable)' }}></div> Stable / Clear ({stableAssets.length})</div>
             <div className="legend-item"><div className="dot" style={{ background: 'var(--accent)' }}></div> Your Location</div>
           </div>
 
@@ -348,7 +606,8 @@ function App() {
               Loading Map Data & Location...
             </div>
           ) : (
-            <MapContainer center={userLocation} zoom={11} style={{ height: '100%', width: '100%' }}>
+            <MapContainer center={mapCenter} zoom={mapZoom} style={{ height: '100%', width: '100%' }}>
+              <ChangeMapView center={mapCenter} zoom={mapZoom} />
               <MapEvents />
               <TileLayer
                 key={mapStyle}
@@ -373,7 +632,7 @@ function App() {
                         <span className={`status-badge badge-${asset.status}`}>{asset.status}</span>
                         {asset.estimated_rul !== undefined && <p style={{ marginTop: '0.5rem', fontWeight: 'bold' }}>Est. RUL: {asset.estimated_rul} years</p>}
                         {asset.severity && <p style={{ marginTop: '0.25rem', fontSize: '0.8rem' }}>Severity: {asset.severity}</p>}
-                        {(asset.id.includes('seed') || !isNaN(asset.id)) ? (
+                        {(asset.id.toString().includes('seed') || !isNaN(asset.id)) ? (
                           <div className="issue-actions">
                             <button className="action-btn delete" onClick={() => deleteIssue(asset.id)}>
                               <Trash2 size={14} /> Remove Report
@@ -389,6 +648,7 @@ function App() {
           )}
         </div>
 
+        {/* Right Side Panel */}
         <div className="side-panel">
           <div className="card" style={{ flex: 'none' }}>
             <h2><Activity size={20} /> Network Status</h2>
