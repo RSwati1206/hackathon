@@ -31,7 +31,8 @@ body {
 .dashboard-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  min-height: 100vh;
+  height: auto;
   padding: 0.75rem 1rem;
   gap: 0.75rem;
 }
@@ -109,7 +110,8 @@ body {
   display: flex;
   flex: 1;
   gap: 0.85rem;
-  min-height: 0;
+  min-height: calc(100vh - 90px);
+  align-items: stretch;
 }
 
 /* ==========================================================================
@@ -124,6 +126,7 @@ body {
   min-width: 290px;
   max-width: 340px;
   padding-right: 0.2rem;
+  align-self: stretch;
 }
 
 .left-dashboard::-webkit-scrollbar,
@@ -396,7 +399,10 @@ body {
   overflow: hidden;
   border: 1px solid var(--glass-border);
   position: relative;
-  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  min-height: 650px;
+  align-self: stretch;
 }
 
 .map-controls {
@@ -496,9 +502,91 @@ body {
 
 /* Leaflet Overrides */
 .leaflet-container {
-  height: 100%;
-  width: 100%;
+  height: 100% !important;
+  width: 100% !important;
+  flex: 1;
+  min-height: 100%;
   background: #0f172a !important;
+}
+
+/* Live Dispatch Stream on Left Dashboard */
+.fill-remaining {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;
+}
+
+.dispatch-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.dispatch-item {
+  background: rgba(15, 23, 42, 0.45);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  transition: all 0.2s ease;
+}
+
+.dispatch-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateX(2px);
+}
+
+.dispatch-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.dispatch-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.12rem 0.45rem;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+}
+
+.dispatch-badge.dispatched {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--color-critical);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.dispatch-badge.warning {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--color-watch);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.dispatch-badge.nominal {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.dispatch-badge.resolved {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--color-stable);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.dispatch-time {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.dispatch-text {
+  font-size: 0.72rem;
+  color: var(--text-main);
+  line-height: 1.35;
+  margin: 0;
 }
 
 /* Smooth Dark Filter for Free OpenStreetMap Tiles (zero watermark, no API key) */
@@ -561,6 +649,7 @@ body {
   gap: 0.75rem;
   min-width: 310px;
   max-width: 360px;
+  align-self: stretch;
 }
 
 .card {

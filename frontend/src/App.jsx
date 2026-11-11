@@ -50,7 +50,18 @@ function ChangeMapView({ center, zoom }) {
     if (center) {
       map.setView(center, zoom || 11);
     }
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+    return () => clearTimeout(timer);
   }, [center, zoom, map]);
+
+  useEffect(() => {
+    const handleResize = () => map.invalidateSize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [map]);
+
   return null;
 }
 
@@ -552,6 +563,41 @@ function App() {
               </button>
             </div>
           </div>
+
+          {/* Live Dispatch & Sensor Activity Stream */}
+          <div className="card left-card fill-remaining">
+            <h3><Radio size={18} color="var(--color-stable)" /> Live Dispatch Stream</h3>
+            <div className="dispatch-stream">
+              <div className="dispatch-item">
+                <div className="dispatch-header">
+                  <span className="dispatch-badge dispatched">DISPATCHED</span>
+                  <span className="dispatch-time">Just now</span>
+                </div>
+                <p className="dispatch-text">Rapid Action Unit #4 en route to Bellandur ORR pipeline breach.</p>
+              </div>
+              <div className="dispatch-item">
+                <div className="dispatch-header">
+                  <span className="dispatch-badge warning">INVESTIGATING</span>
+                  <span className="dispatch-time">7m ago</span>
+                </div>
+                <p className="dispatch-text">Structural engineers inspecting Ejipura pillar subsidence.</p>
+              </div>
+              <div className="dispatch-item">
+                <div className="dispatch-header">
+                  <span className="dispatch-badge nominal">MONITORING</span>
+                  <span className="dispatch-time">14m ago</span>
+                </div>
+                <p className="dispatch-text">Hebbal deck harmonic sensors operating in safe tolerance.</p>
+              </div>
+              <div className="dispatch-item">
+                <div className="dispatch-header">
+                  <span className="dispatch-badge resolved">VERIFIED</span>
+                  <span className="dispatch-time">26m ago</span>
+                </div>
+                <p className="dispatch-text">Indiranagar 100ft road gas conduit ultrasonic ping nominal.</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Center Map Section */}
@@ -592,11 +638,11 @@ function App() {
           </div>
 
           {loading || !userLocation ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-muted)' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: '600px', flex: 1, color: 'var(--text-muted)' }}>
               Loading Map Data & Location...
             </div>
           ) : (
-            <MapContainer center={mapCenter} zoom={mapZoom} style={{ height: '100%', width: '100%' }}>
+            <MapContainer center={mapCenter} zoom={mapZoom} style={{ height: '100%', width: '100%', minHeight: '600px', flex: 1 }}>
               <ChangeMapView center={mapCenter} zoom={mapZoom} />
               <MapEvents />
               <TileLayer
