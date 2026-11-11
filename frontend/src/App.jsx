@@ -407,159 +407,170 @@ function App() {
       <div className="main-content">
         {/* Left Dashboard Panel */}
         <div className="left-dashboard">
-          {/* Executive Overview & Health Score */}
-          <div className="card left-card">
-            <div className="card-header-badge">
-              <span className="live-indicator"><span className="pulse-dot"></span> LIVE MONITORING</span>
-              <span className="city-tag">BBMP REGION</span>
+          {/* Health & Grid Overview */}
+          <div className="card left-card overview-card">
+            <div className="card-top-meta">
+              <span className="live-status-pill">
+                <span className="pulse-dot"></span> BBMP GRID LIVE
+              </span>
+              <span className="region-pill">BENGALURU</span>
             </div>
-            <h2 className="overview-title">Urban Infrastructure Grid</h2>
-            <p className="overview-subtitle">Real-time predictive health, sensor diagnostics, and failure risk estimation across Bengaluru</p>
-            
-            <div className="health-score-container">
-              <div className="health-score-header">
-                <span>Grid Health Index</span>
+
+            <div className="health-hero">
+              <div className="health-score-ring">
                 <span 
-                  className="health-score-value" 
+                  className="health-number" 
                   style={{ 
                     color: healthScore >= 75 ? 'var(--color-stable)' : (healthScore >= 50 ? 'var(--color-watch)' : 'var(--color-critical)') 
                   }}
                 >
-                  {healthScore}%
+                  {healthScore}
                 </span>
+                <span className="health-percent">%</span>
               </div>
-              <div className="health-progress-bar">
-                <div 
-                  className="health-progress-fill" 
-                  style={{ 
-                    width: `${healthScore}%`,
-                    background: healthScore >= 75 
-                      ? 'linear-gradient(90deg, #10b981, #34d399)' 
-                      : (healthScore >= 50 ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #ef4444, #f87171)')
-                  }}
-                ></div>
+              <div className="health-hero-text">
+                <h4>Grid Health Index</h4>
+                <p>Autonomous AI Diagnostic</p>
               </div>
-              <div className="health-stats-row">
-                <span><strong style={{ color: 'var(--color-critical)' }}>{criticalAssets.length}</strong> Critical</span>
-                <span><strong style={{ color: 'var(--color-watch)' }}>{watchAssets.length}</strong> Watch</span>
-                <span><strong style={{ color: 'var(--color-stable)' }}>{stableAssets.length}</strong> Stable</span>
-              </div>
+            </div>
+
+            <div className="health-mini-bar">
+              <div 
+                className="health-bar-fill" 
+                style={{ 
+                  width: `${healthScore}%`,
+                  background: healthScore >= 75 
+                    ? 'linear-gradient(90deg, #10b981, #34d399)' 
+                    : (healthScore >= 50 ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #ef4444, #f87171)')
+                }}
+              ></div>
+            </div>
+
+            <div className="health-chips-row">
+              <span 
+                className={`health-chip chip-critical ${activeFilter === 'critical' ? 'selected' : ''}`}
+                onClick={() => setActiveFilter(activeFilter === 'critical' ? 'all' : 'critical')}
+              >
+                ● {criticalAssets.length} Critical
+              </span>
+              <span 
+                className={`health-chip chip-watch ${activeFilter === 'watch' ? 'selected' : ''}`}
+                onClick={() => setActiveFilter(activeFilter === 'watch' ? 'all' : 'watch')}
+              >
+                ● {watchAssets.length} Watch
+              </span>
+              <span 
+                className={`health-chip chip-stable ${activeFilter === 'stable' ? 'selected' : ''}`}
+                onClick={() => setActiveFilter(activeFilter === 'stable' ? 'all' : 'stable')}
+              >
+                ● {stableAssets.length} Stable
+              </span>
             </div>
           </div>
 
-          {/* Asset Category Filters */}
+          {/* Asset Category Selector */}
           <div className="card left-card">
-            <h3><Layers size={18} /> Asset Categories</h3>
-            <div className="category-filters">
+            <div className="card-section-label">
+              <Layers size={13} /> ASSET CATEGORIES
+            </div>
+            <div className="category-pill-group">
               <button 
-                className={`cat-btn ${typeFilter === 'all' ? 'active' : ''}`}
+                className={`cat-pill-btn ${typeFilter === 'all' ? 'active' : ''}`}
                 onClick={() => setTypeFilter('all')}
               >
-                <div className="cat-icon-name">
-                  <Activity size={16} /> All Monitored Nodes
-                </div>
-                <span className="cat-count">{allAssets.length}</span>
+                <span className="cat-name">All Infrastructure</span>
+                <span className="cat-pill-count">{allAssets.length}</span>
               </button>
 
               <button 
-                className={`cat-btn ${typeFilter === 'bridge' ? 'active' : ''}`}
+                className={`cat-pill-btn ${typeFilter === 'bridge' ? 'active' : ''}`}
                 onClick={() => setTypeFilter(typeFilter === 'bridge' ? 'all' : 'bridge')}
               >
-                <div className="cat-icon-name">
-                  <span className="type-badge-dot bridge"></span> Bridges & Flyovers
-                </div>
-                <span className="cat-count">{allAssets.filter(a => a.type === 'bridge').length}</span>
+                <span className="cat-name"><span className="type-badge-dot bridge"></span> Bridges & Flyovers</span>
+                <span className="cat-pill-count">{allAssets.filter(a => a.type === 'bridge').length}</span>
               </button>
 
               <button 
-                className={`cat-btn ${typeFilter === 'road' ? 'active' : ''}`}
+                className={`cat-pill-btn ${typeFilter === 'road' ? 'active' : ''}`}
                 onClick={() => setTypeFilter(typeFilter === 'road' ? 'all' : 'road')}
               >
-                <div className="cat-icon-name">
-                  <span className="type-badge-dot road"></span> Arterial Corridors
-                </div>
-                <span className="cat-count">{allAssets.filter(a => a.type === 'road').length}</span>
+                <span className="cat-name"><span className="type-badge-dot road"></span> Arterial Corridors</span>
+                <span className="cat-pill-count">{allAssets.filter(a => a.type === 'road').length}</span>
               </button>
 
               <button 
-                className={`cat-btn ${typeFilter === 'pipeline' ? 'active' : ''}`}
+                className={`cat-pill-btn ${typeFilter === 'pipeline' ? 'active' : ''}`}
                 onClick={() => setTypeFilter(typeFilter === 'pipeline' ? 'all' : 'pipeline')}
               >
-                <div className="cat-icon-name">
-                  <span className="type-badge-dot pipeline"></span> Water & Gas Mains
-                </div>
-                <span className="cat-count">{allAssets.filter(a => a.type === 'pipeline').length}</span>
+                <span className="cat-name"><span className="type-badge-dot pipeline"></span> Water & Gas Mains</span>
+                <span className="cat-pill-count">{allAssets.filter(a => a.type === 'pipeline').length}</span>
               </button>
             </div>
           </div>
 
-          {/* Real-time Telemetry Sensors */}
+          {/* Sensor Telemetry 2x2 Clean Matrix */}
           <div className="card left-card">
-            <h3><Radio size={18} color="var(--accent)" /> Sensor Telemetry</h3>
-            <div className="telemetry-list">
-              <div className="telemetry-item">
-                <div className="telemetry-meta">
-                  <span className="tel-name">Structural Strain</span>
-                  <span className="tel-val nominal">0.042 µε</span>
-                </div>
-                <div className="telemetry-status">Bridges Nominal (&lt; 0.10 µε)</div>
+            <div className="card-section-label">
+              <Radio size={13} color="var(--accent)" /> SENSOR TELEMETRY MATRIX
+            </div>
+            <div className="telemetry-matrix">
+              <div className="matrix-tile">
+                <span className="matrix-label">Strain Gauge</span>
+                <span className="matrix-val nominal">0.042 µε</span>
+                <span className="matrix-sub">Bridges Nominal</span>
               </div>
-
-              <div className="telemetry-item">
-                <div className="telemetry-meta">
-                  <span className="tel-name">Hydraulic Pressure</span>
-                  <span className="tel-val nominal">4.2 Bar</span>
-                </div>
-                <div className="telemetry-status">Water Pipelines Flow Normal</div>
+              <div className="matrix-tile">
+                <span className="matrix-label">Line Pressure</span>
+                <span className="matrix-val nominal">4.2 Bar</span>
+                <span className="matrix-sub">Hydraulic Flow OK</span>
               </div>
-
-              <div className="telemetry-item">
-                <div className="telemetry-meta">
-                  <span className="tel-name">Vibration Harmonics</span>
-                  <span className="tel-val warning">1.82 Hz</span>
-                </div>
-                <div className="telemetry-status">Elevated near Silk Board & ORR</div>
+              <div className="matrix-tile">
+                <span className="matrix-label">Vibrations</span>
+                <span className="matrix-val warning">1.82 Hz</span>
+                <span className="matrix-sub">Silk Board & ORR</span>
               </div>
-
-              <div className="telemetry-item">
-                <div className="telemetry-meta">
-                  <span className="tel-name">AI Predictive Engine</span>
-                  <span className="tel-val online">ONLINE</span>
-                </div>
-                <div className="telemetry-status">Weighted RUL Multi-Factor v2.1</div>
+              <div className="matrix-tile">
+                <span className="matrix-label">AI Engine</span>
+                <span className="matrix-val online">ONLINE</span>
+                <span className="matrix-sub">Weighted RUL v2.1</span>
               </div>
             </div>
           </div>
 
-          {/* Quick Dispatch & Map Actions */}
-          <div className="card left-card">
-            <h3><Navigation size={18} /> Quick Dispatch & View</h3>
-            <div className="quick-actions-grid">
+          {/* Quick Actions Bar */}
+          <div className="card left-card quick-actions-card">
+            <div className="card-section-label">
+              <Navigation size={13} /> QUICK VIEW CONTROLS
+            </div>
+            <div className="quick-actions-row">
               <button 
-                className="quick-action-btn"
+                className="action-chip"
                 onClick={() => {
                   setMapCenter([...defaultBengaluru]);
                   setMapZoom(11);
                 }}
+                title="Center on Central Bengaluru"
               >
-                <MapPin size={15} /> Central Bengaluru
+                <MapPin size={13} /> Central Blr
               </button>
 
               <button 
-                className={`quick-action-btn ${activeFilter === 'critical' ? 'active-critical' : ''}`}
+                className={`action-chip ${activeFilter === 'critical' ? 'active-critical' : ''}`}
                 onClick={() => setActiveFilter(activeFilter === 'critical' ? 'all' : 'critical')}
+                title="Filter critical incidents only"
               >
-                <AlertTriangle size={15} color="var(--color-critical)" /> Critical Only
+                <AlertTriangle size={13} color="var(--color-critical)" /> Critical
               </button>
 
               <button 
-                className="quick-action-btn"
+                className="action-chip"
                 onClick={() => {
                   setActiveFilter('all');
                   setTypeFilter('all');
                 }}
+                title="Reset all filters"
               >
-                <RefreshCw size={15} /> Reset All Filters
+                <RefreshCw size={13} /> Reset
               </button>
             </div>
           </div>
@@ -654,37 +665,57 @@ function App() {
           {/* Under-Map Section: Live Dispatch & Sensor Activity Stream */}
           <div className="card under-map-card">
             <div className="under-map-header">
-              <h2><Radio size={20} color="var(--color-stable)" /> Live Dispatch & Sensor Activity Stream</h2>
-              <span className="live-indicator"><span className="pulse-dot"></span> BBMP REAL-TIME LOG</span>
+              <div className="stream-title-group">
+                <Radio size={18} color="var(--color-stable)" />
+                <h3>Live Dispatch & Structural Sensor Activity Stream</h3>
+              </div>
+              <span className="live-status-pill">
+                <span className="pulse-dot"></span> BBMP REAL-TIME LOG
+              </span>
             </div>
             <div className="dispatch-stream-grid">
-              <div className="dispatch-item">
-                <div className="dispatch-header">
+              <div className="dispatch-row-card">
+                <div className="dispatch-badge-wrap">
                   <span className="dispatch-badge dispatched">DISPATCHED</span>
-                  <span className="dispatch-time">Just now</span>
+                  <span className="dispatch-node">ORR-WTR-01</span>
                 </div>
-                <p className="dispatch-text">Rapid Action Unit #4 en route to Bellandur ORR pipeline breach. Service lane water diversion active.</p>
+                <div className="dispatch-body">
+                  <p className="dispatch-desc">Rapid Action Unit #4 deployed to Bellandur ORR pipeline breach. Service lane water diversion active.</p>
+                  <span className="dispatch-time">Just now · Bellandur Sector 2</span>
+                </div>
               </div>
-              <div className="dispatch-item">
-                <div className="dispatch-header">
+
+              <div className="dispatch-row-card">
+                <div className="dispatch-badge-wrap">
                   <span className="dispatch-badge warning">INVESTIGATING</span>
-                  <span className="dispatch-time">7m ago</span>
+                  <span className="dispatch-node">EJP-ROD-02</span>
                 </div>
-                <p className="dispatch-text">BBMP structural engineering unit inspecting Ejipura pillar subsidence and deck alignment.</p>
+                <div className="dispatch-body">
+                  <p className="dispatch-desc">BBMP road inspection squad assessing inner ring road cave-in near flyover support column.</p>
+                  <span className="dispatch-time">7m ago · Ejipura Corridor</span>
+                </div>
               </div>
-              <div className="dispatch-item">
-                <div className="dispatch-header">
+
+              <div className="dispatch-row-card">
+                <div className="dispatch-badge-wrap">
                   <span className="dispatch-badge nominal">MONITORING</span>
-                  <span className="dispatch-time">14m ago</span>
+                  <span className="dispatch-node">HBL-BRG-01</span>
                 </div>
-                <p className="dispatch-text">Hebbal flyover deck harmonic sensors operating within nominal peak-hour tolerance limits.</p>
+                <div className="dispatch-body">
+                  <p className="dispatch-desc">Hebbal flyover deck harmonic sensors operating within nominal peak-hour tolerance limits.</p>
+                  <span className="dispatch-time">14m ago · Hebbal Junction</span>
+                </div>
               </div>
-              <div className="dispatch-item">
-                <div className="dispatch-header">
+
+              <div className="dispatch-row-card">
+                <div className="dispatch-badge-wrap">
                   <span className="dispatch-badge resolved">VERIFIED</span>
-                  <span className="dispatch-time">26m ago</span>
+                  <span className="dispatch-node">IND-GAS-03</span>
                 </div>
-                <p className="dispatch-text">Indiranagar 100ft road gas conduit ultrasonic pulse telemetry confirmed nominal and stable.</p>
+                <div className="dispatch-body">
+                  <p className="dispatch-desc">Indiranagar 100ft road gas conduit ultrasonic pulse telemetry confirmed nominal and stable.</p>
+                  <span className="dispatch-time">26m ago · Indiranagar Div</span>
+                </div>
               </div>
             </div>
           </div>
