@@ -563,126 +563,131 @@ function App() {
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Live Dispatch & Sensor Activity Stream */}
-          <div className="card left-card fill-remaining">
-            <h3><Radio size={18} color="var(--color-stable)" /> Live Dispatch Stream</h3>
-            <div className="dispatch-stream">
+        {/* Center Column: Map (Proportional Height) + Under-Map Section */}
+        <div className="center-column">
+          <div className="map-section">
+            <div className="map-controls">
+              <button 
+                className={`control-btn ${reportMode ? 'active' : ''}`}
+                onClick={() => setReportMode(!reportMode)}
+              >
+                {reportMode ? <X size={18} /> : <Plus size={18} />}
+                {reportMode ? 'Cancel Reporting' : 'Report Incident'}
+              </button>
+              <button 
+                className="control-btn" 
+                onClick={() => {
+                  setActiveFilter('all');
+                  setTypeFilter('all');
+                }}
+              >
+                <Filter size={18} /> Reset Filters
+              </button>
+              <button
+                className="control-btn map-toggle-btn"
+                onClick={() => setMapStyle(mapStyle === 'dark' ? 'light' : 'dark')}
+                title="Toggle map style"
+              >
+                {mapStyle === 'dark' ? '☀️ Light Map' : '🌙 Dark Map'}
+              </button>
+            </div>
+
+            {reportMode && <div className="report-hint">Click anywhere on the map to mark an incident</div>}
+
+            <div className="map-legend">
+              <div className="legend-item"><div className="dot" style={{ background: 'var(--color-critical)' }}></div> Critical Risk ({criticalAssets.length})</div>
+              <div className="legend-item"><div className="dot" style={{ background: 'var(--color-watch)' }}></div> Warning / Watch ({watchAssets.length})</div>
+              <div className="legend-item"><div className="dot" style={{ background: 'var(--color-stable)' }}></div> Stable / Clear ({stableAssets.length})</div>
+              <div className="legend-item"><div className="dot" style={{ background: 'var(--accent)' }}></div> Your Location</div>
+            </div>
+
+            {loading || !userLocation ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'var(--text-muted)' }}>
+                Loading Map Data & Location...
+              </div>
+            ) : (
+              <MapContainer center={mapCenter} zoom={mapZoom} style={{ height: '100%', width: '100%' }}>
+                <ChangeMapView center={mapCenter} zoom={mapZoom} />
+                <MapEvents />
+                <TileLayer
+                  key={mapStyle}
+                  className={mapStyle === 'dark' ? 'dark-tiles' : ''}
+                  url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                />
+                <Marker position={userLocation} icon={userLocationIcon}>
+                  <Popup>Your Current Location</Popup>
+                </Marker>
+                {filteredAssets.map((asset) => (
+                  <Marker
+                    key={asset.id}
+                    position={[asset.lat, asset.lng]}
+                    icon={createIcon(asset.status)}
+                  >
+                    <Popup>
+                      <div style={{ padding: '0.5rem' }}>
+                        <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)', fontSize: '1.1rem' }}>{asset.name}</h3>
+                        <p style={{ margin: '0 0 0.25rem 0', color: 'var(--text-muted)' }}>Type: {asset.type.toUpperCase()}</p>
+                        {asset.description && <p style={{ margin: '0.5rem 0', fontSize: '0.85rem' }}>{asset.description}</p>}
+                        <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--glass-border)' }}>
+                          <span className={`status-badge badge-${asset.status}`}>{asset.status}</span>
+                          {asset.estimated_rul !== undefined && <p style={{ marginTop: '0.5rem', fontWeight: 'bold' }}>Est. RUL: {asset.estimated_rul} years</p>}
+                          {asset.severity && <p style={{ marginTop: '0.25rem', fontSize: '0.8rem' }}>Severity: {asset.severity}</p>}
+                          {(asset.id.toString().includes('seed') || !isNaN(asset.id)) ? (
+                            <div className="issue-actions">
+                              <button className="action-btn delete" onClick={() => deleteIssue(asset.id)}>
+                                <Trash2 size={14} /> Remove Report
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+              </MapContainer>
+            )}
+          </div>
+
+          {/* Under-Map Section: Live Dispatch & Sensor Activity Stream */}
+          <div className="card under-map-card">
+            <div className="under-map-header">
+              <h2><Radio size={20} color="var(--color-stable)" /> Live Dispatch & Sensor Activity Stream</h2>
+              <span className="live-indicator"><span className="pulse-dot"></span> BBMP REAL-TIME LOG</span>
+            </div>
+            <div className="dispatch-stream-grid">
               <div className="dispatch-item">
                 <div className="dispatch-header">
                   <span className="dispatch-badge dispatched">DISPATCHED</span>
                   <span className="dispatch-time">Just now</span>
                 </div>
-                <p className="dispatch-text">Rapid Action Unit #4 en route to Bellandur ORR pipeline breach.</p>
+                <p className="dispatch-text">Rapid Action Unit #4 en route to Bellandur ORR pipeline breach. Service lane water diversion active.</p>
               </div>
               <div className="dispatch-item">
                 <div className="dispatch-header">
                   <span className="dispatch-badge warning">INVESTIGATING</span>
                   <span className="dispatch-time">7m ago</span>
                 </div>
-                <p className="dispatch-text">Structural engineers inspecting Ejipura pillar subsidence.</p>
+                <p className="dispatch-text">BBMP structural engineering unit inspecting Ejipura pillar subsidence and deck alignment.</p>
               </div>
               <div className="dispatch-item">
                 <div className="dispatch-header">
                   <span className="dispatch-badge nominal">MONITORING</span>
                   <span className="dispatch-time">14m ago</span>
                 </div>
-                <p className="dispatch-text">Hebbal deck harmonic sensors operating in safe tolerance.</p>
+                <p className="dispatch-text">Hebbal flyover deck harmonic sensors operating within nominal peak-hour tolerance limits.</p>
               </div>
               <div className="dispatch-item">
                 <div className="dispatch-header">
                   <span className="dispatch-badge resolved">VERIFIED</span>
                   <span className="dispatch-time">26m ago</span>
                 </div>
-                <p className="dispatch-text">Indiranagar 100ft road gas conduit ultrasonic ping nominal.</p>
+                <p className="dispatch-text">Indiranagar 100ft road gas conduit ultrasonic pulse telemetry confirmed nominal and stable.</p>
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Center Map Section */}
-        <div className="map-section">
-          <div className="map-controls">
-            <button 
-              className={`control-btn ${reportMode ? 'active' : ''}`}
-              onClick={() => setReportMode(!reportMode)}
-            >
-              {reportMode ? <X size={18} /> : <Plus size={18} />}
-              {reportMode ? 'Cancel Reporting' : 'Report Incident'}
-            </button>
-            <button 
-              className="control-btn" 
-              onClick={() => {
-                setActiveFilter('all');
-                setTypeFilter('all');
-              }}
-            >
-              <Filter size={18} /> Reset Filters
-            </button>
-            <button
-              className="control-btn map-toggle-btn"
-              onClick={() => setMapStyle(mapStyle === 'dark' ? 'light' : 'dark')}
-              title="Toggle map style"
-            >
-              {mapStyle === 'dark' ? '☀️ Light Map' : '🌙 Dark Map'}
-            </button>
-          </div>
-
-          {reportMode && <div className="report-hint">Click anywhere on the map to mark an incident</div>}
-
-          <div className="map-legend">
-            <div className="legend-item"><div className="dot" style={{ background: 'var(--color-critical)' }}></div> Critical Risk ({criticalAssets.length})</div>
-            <div className="legend-item"><div className="dot" style={{ background: 'var(--color-watch)' }}></div> Warning / Watch ({watchAssets.length})</div>
-            <div className="legend-item"><div className="dot" style={{ background: 'var(--color-stable)' }}></div> Stable / Clear ({stableAssets.length})</div>
-            <div className="legend-item"><div className="dot" style={{ background: 'var(--accent)' }}></div> Your Location</div>
-          </div>
-
-          {loading || !userLocation ? (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: '600px', flex: 1, color: 'var(--text-muted)' }}>
-              Loading Map Data & Location...
-            </div>
-          ) : (
-            <MapContainer center={mapCenter} zoom={mapZoom} style={{ height: '100%', width: '100%', minHeight: '600px', flex: 1 }}>
-              <ChangeMapView center={mapCenter} zoom={mapZoom} />
-              <MapEvents />
-              <TileLayer
-                key={mapStyle}
-                className={mapStyle === 'dark' ? 'dark-tiles' : ''}
-                url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              />
-              <Marker position={userLocation} icon={userLocationIcon}>
-                <Popup>Your Current Location</Popup>
-              </Marker>
-              {filteredAssets.map((asset) => (
-                <Marker
-                  key={asset.id}
-                  position={[asset.lat, asset.lng]}
-                  icon={createIcon(asset.status)}
-                >
-                  <Popup>
-                    <div style={{ padding: '0.5rem' }}>
-                      <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)', fontSize: '1.1rem' }}>{asset.name}</h3>
-                      <p style={{ margin: '0 0 0.25rem 0', color: 'var(--text-muted)' }}>Type: {asset.type.toUpperCase()}</p>
-                      {asset.description && <p style={{ margin: '0.5rem 0', fontSize: '0.85rem' }}>{asset.description}</p>}
-                      <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--glass-border)' }}>
-                        <span className={`status-badge badge-${asset.status}`}>{asset.status}</span>
-                        {asset.estimated_rul !== undefined && <p style={{ marginTop: '0.5rem', fontWeight: 'bold' }}>Est. RUL: {asset.estimated_rul} years</p>}
-                        {asset.severity && <p style={{ marginTop: '0.25rem', fontSize: '0.8rem' }}>Severity: {asset.severity}</p>}
-                        {(asset.id.toString().includes('seed') || !isNaN(asset.id)) ? (
-                          <div className="issue-actions">
-                            <button className="action-btn delete" onClick={() => deleteIssue(asset.id)}>
-                              <Trash2 size={14} /> Remove Report
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
-            </MapContainer>
-          )}
         </div>
 
         {/* Right Side Panel */}

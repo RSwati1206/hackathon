@@ -390,19 +390,64 @@ body {
 }
 
 /* ==========================================================================
-   Center Map Section
+   Center Column & Map Section
    ========================================================================== */
-.map-section {
+.center-column {
   flex: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+  align-self: stretch;
+}
+
+.map-section {
+  width: 100%;
+  height: 480px;
   background: var(--bg-card);
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--glass-border);
   position: relative;
+  flex: none;
+}
+
+.under-map-card {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 650px;
-  align-self: stretch;
+}
+
+.under-map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.under-map-header h2 {
+  font-size: 1.05rem;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.dispatch-stream-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.65rem;
+}
+
+@media (max-width: 1100px) {
+  .dispatch-stream-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .map-controls {
