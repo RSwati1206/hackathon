@@ -33,8 +33,6 @@ import {
   Sliders
 } from 'lucide-react';
 import rawAssets from './data.json';
-import Dashboard from './components/Dashboard';
-import { calculateRUL } from './utils/rulCalculator';
 import './index.css';
 
 ChartJS.register(
@@ -48,6 +46,28 @@ ChartJS.register(
   Filler
 );
 
+// Map view controller component
+function ChangeMapView({ center, zoom }) {
+  const map = useMap();
+  useEffect(() => {
+    if (center) {
+      map.setView(center, zoom || 11);
+    }
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [center, zoom, map]);
+
+  useEffect(() => {
+    const handleResize = () => map.invalidateSize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [map]);
+
+  return null;
+}
+
 // User Location Icon
 const userLocationIcon = L.divIcon({
   className: 'user-marker',
@@ -56,7 +76,7 @@ const userLocationIcon = L.divIcon({
   iconAnchor: [11, 11]
 });
 
-// Custom Leaflet Icons
+// Custom Leaflet Icons with status colors
 const createIcon = (status) => {
   const colorMap = {
     stable: 'var(--color-stable)',
@@ -115,16 +135,27 @@ const calculateLocalRul = (asset) => {
     if (reasons.length) {
       explanation = `${asset.name}: ${reasons.join(' + ')} → Failure risk in ~${Math.round(estimated_rul * 12)} months`;
     }
-  }, [target, map]);
-  return null;
-}
+  } else if (estimated_rul <= 7) {
+    status = "watch";
+    explanation = `${asset.name}: Needs attention, ${last_maintenance}yr since maintenance → Evaluate in ~${Math.round((estimated_rul - 2) * 12)} months`;
+  }
+
+  return {
+    ...asset,
+    estimated_rul,
+    anomaly,
+    status,
+    explanation
+  };
+};
 
 function App() {
-  const [activeTab, setActiveTab] = useState('map'); // 'map' | 'dashboard' | 'simulator'
+  const defaultBengaluru = [12.9716, 77.5946];
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState(null);
-  const [mapFocusTarget, setMapFocusTarget] = useState(null);
+  const [mapCenter, setMapCenter] = useState(defaultBengaluru);
+  const [mapZoom, setMapZoom] = useState(11);
   
   // Dashboard active view: 'map' | 'dispatch' | 'telemetry'
   const [activeView, setActiveView] = useState('map');
@@ -146,91 +177,59 @@ function App() {
       reporter: 'BWSSB Rapid Action',
       timestamp: new Date().toISOString()
     },
-    light: {
-      url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    {
+      id: 'seed-blr-2',
+      name: 'Ejipura Inner Ring Road Asphalt Sinkhole',
+      type: 'road',
+      status: 'critical',
+      lat: 12.9412,
+      lng: 77.6279,
+      description: 'Cavitation and subsidence near flyover support column. Immediate diversion needed.',
+      severity: 'High',
+      reporter: 'BBMP Control Room',
+      timestamp: new Date().toISOString()
+    },
+    {
+      id: 'seed-blr-3',
+      name: 'Hebbal Flyover Deck Expansion Joint Stress',
+      type: 'bridge',
+      status: 'watch',
+      lat: 13.0421,
+      lng: 77.5912,
+      description: 'Sensor telemetry indicates accelerated vibration harmonics under peak hour freight traffic.',
+      severity: 'Medium',
+      reporter: 'Sensor Array S-04',
+      timestamp: new Date().toISOString()
+    },
+    {
+      id: 'seed-blr-4',
+      name: 'Kengeri Rail Overbridge Pavement Distress',
+      type: 'bridge',
+      status: 'watch',
+      lat: 12.9082,
+      lng: 77.4841,
+      description: 'Surface cracking along bridge ramp approach lane. Requires sealing prior to monsoon.',
+      severity: 'Medium',
+      reporter: 'Traffic Division West',
+      timestamp: new Date().toISOString()
+    },
+    {
+      id: 'seed-blr-5',
+      name: 'Indiranagar 100ft Road Gas Duct Pressure Check',
+      type: 'pipeline',
+      status: 'stable',
+      lat: 12.9734,
+      lng: 77.6415,
+      description: 'Preventive ultrasonic inspection completed. Secondary pressure valve nominal.',
+      severity: 'Low',
+      reporter: 'GAIL Tech Crew',
+      timestamp: new Date().toISOString()
     }
-  };
+  ];
 
-  // Reported Issues (Stored in localStorage)
   const [reportedIssues, setReportedIssues] = useState(() => {
-    const saved = localStorage.getItem('reportedIssues');
-    const parsed = saved ? JSON.parse(saved) : null;
-    if (parsed && parsed.length >= 4) return parsed;
-    return [
-      {
-        id: 'seed-1',
-        name: 'Main St Water Leak',
-        type: 'pipeline',
-        status: 'critical',
-        lat: 12.9716,
-        lng: 77.5946,
-        description: 'Large pipe burst near the intersection. Water pressure dropping in sector 4.',
-        severity: 'High',
-        reporter: 'System Admin',
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 'seed-2',
-        name: 'Outer Ring Road Pothole',
-        type: 'road',
-        status: 'watch',
-        lat: 12.9250,
-        lng: 77.6750,
-        description: 'Large pothole forming on the fast lane. Risk of vehicle damage.',
-        severity: 'Medium',
-        reporter: 'User-422',
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 'seed-3',
-        name: 'NH44 Highway Bridge',
-        type: 'bridge',
-        status: 'stable',
-        lat: 13.0200,
-        lng: 77.5500,
-        description: 'Regular inspection passed. Structural integrity confirmed.',
-        severity: 'Low',
-        reporter: 'Inspection Unit',
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 'seed-4',
-        name: 'Hebbal Flyover',
-        type: 'bridge',
-        status: 'stable',
-        lat: 13.0350,
-        lng: 77.5970,
-        description: 'All systems normal. Load capacity within limits.',
-        severity: 'Low',
-        reporter: 'Auto-Sensor',
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 'seed-5',
-        name: 'Whitefield Water Main',
-        type: 'pipeline',
-        status: 'stable',
-        lat: 12.9698,
-        lng: 77.7500,
-        description: 'Flow rate and pressure normal. No leaks detected.',
-        severity: 'Low',
-        reporter: 'Sensor-WF-7',
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 'seed-6',
-        name: 'Koramangala Road Sector',
-        type: 'road',
-        status: 'stable',
-        lat: 12.9352,
-        lng: 77.6245,
-        description: 'Surface condition good. No maintenance required.',
-        severity: 'Low',
-        reporter: 'Road Dept.',
-        timestamp: new Date().toISOString()
-      }
-    ];
+    const saved = localStorage.getItem('reportedIssues_blr_v3');
+    return saved ? JSON.parse(saved) : defaultSeeds;
   });
 
   const [reportMode, setReportMode] = useState(false);
@@ -247,32 +246,23 @@ function App() {
     reporter: ''
   });
 
-  // Fetch Data & User Location with resilient predictive fallback
+  // Fetch Data & User Location with Bengaluru centering
   useEffect(() => {
-    const fetchData = async (lat, lng) => {
-      const adjustedAssets = rawAssets.map(asset => ({
-        ...asset,
-        lat: lat + (asset.lat - 40.78),
-        lng: lng + (asset.lng - (-73.9))
-      }));
-
+    const loadData = async () => {
       try {
         const response = await fetch('http://localhost:5000/api/predict_all', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ assets: adjustedAssets })
+          body: JSON.stringify({ assets: rawAssets })
         });
-        if (!response.ok) throw new Error("Backend response error");
+        if (!response.ok) throw new Error('API server returned error');
         const data = await response.json();
         setAssets(data);
+        setLoading(false);
       } catch (error) {
-        console.warn("Backend unavailable, using client predictive calculation engine:", error);
-        const fallbackData = adjustedAssets.map(asset => ({
-          ...asset,
-          ...calculateRUL(asset)
-        }));
-        setAssets(fallbackData);
-      } finally {
+        console.warn("Backend API unavailable, using local deterministic predictive engine:", error);
+        const localData = rawAssets.map(calculateLocalRul);
+        setAssets(localData);
         setLoading(false);
       }
     };
@@ -291,20 +281,22 @@ function App() {
           loadData();
         },
         (error) => {
-          console.error("Error getting location:", error);
-          setUserLocation([12.9716, 77.5946]);
-          fetchData(12.9716, 77.5946);
+          console.warn("Geolocation fallback to Bengaluru:", error);
+          setUserLocation(defaultBengaluru);
+          setMapCenter(defaultBengaluru);
+          loadData();
         }
       );
     } else {
-      setUserLocation([12.9716, 77.5946]);
-      fetchData(12.9716, 77.5946);
+      setUserLocation(defaultBengaluru);
+      setMapCenter(defaultBengaluru);
+      loadData();
     }
   }, []);
 
   // Persist Reported Issues
   useEffect(() => {
-    localStorage.setItem('reportedIssues', JSON.stringify(reportedIssues));
+    localStorage.setItem('reportedIssues_blr_v3', JSON.stringify(reportedIssues));
   }, [reportedIssues]);
 
   // Map Click Handler Component
@@ -341,35 +333,33 @@ function App() {
     setReportedIssues(reportedIssues.filter(i => i.id !== id));
   };
 
-  const handleLocateAsset = (asset) => {
-    setActiveTab('map');
-    setMapFocusTarget(asset);
-  };
-
-  const handleAddCustomAsset = (newAsset) => {
-    setAssets(prev => [newAsset, ...prev]);
-    setActiveTab('map');
-    setMapFocusTarget(newAsset);
-  };
-
   const allAssets = [...assets, ...reportedIssues];
   
-  const filteredAssets = activeFilter === 'all' 
-    ? allAssets 
-    : allAssets.filter(a => a.status === activeFilter);
+  // Combined filter for status and type
+  const filteredAssets = allAssets.filter(asset => {
+    const matchesStatus = activeFilter === 'all' || asset.status === activeFilter;
+    const matchesType = typeFilter === 'all' || asset.type === typeFilter;
+    return matchesStatus && matchesType;
+  });
 
   const criticalAssets = allAssets.filter(a => a.status === 'critical');
   const watchAssets = allAssets.filter(a => a.status === 'watch');
   const stableAssets = allAssets.filter(a => a.status === 'stable');
 
-  const alerts = allAssets.filter(a => a.status !== 'stable')
+  // Overall City Grid Health Index (0 - 100)
+  const healthScore = allAssets.length > 0 
+    ? Math.round(((stableAssets.length * 100) + (watchAssets.length * 60) + (criticalAssets.length * 20)) / allAssets.length)
+    : 85;
+
+  const alerts = allAssets
+    .filter(a => a.status !== 'stable')
     .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
 
   const chartData = {
     labels: ['Bridges', 'Roads', 'Pipelines'],
     datasets: [
       {
-        label: 'Asset Count',
+        label: 'Active Infrastructure Count',
         data: [
           allAssets.filter(a => a.type === 'bridge').length,
           allAssets.filter(a => a.type === 'road').length,
@@ -494,7 +484,6 @@ function App() {
 
   return (
     <div className="dashboard-container">
-      {/* Top Main Navigation Header */}
       <header className="header">
         <div className="logo-container">
           <span className="logo-icon">⬢</span>
@@ -502,46 +491,11 @@ function App() {
             <span className="logo-infra">INFRA</span><span className="logo-watch">WATCH</span>
           </h1>
           <span className="logo-badge">LIVE</span>
+          <span className="city-tag" style={{ marginLeft: '0.5rem' }}>BENGALURU</span>
         </div>
-
-        {/* Navigation Tabs */}
-        <nav className="nav-tabs-container">
-          <button 
-            type="button"
-            className={`nav-tab-btn ${activeTab === 'map' ? 'active' : ''}`}
-            onClick={() => setActiveTab('map')}
-          >
-            <MapPin size={16} /> Live Map
-          </button>
-          <button 
-            type="button"
-            className={`nav-tab-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dashboard')}
-          >
-            <LayoutDashboard size={16} /> Analytics Dashboard
-            {criticalAssets.length > 0 && (
-              <span className="tab-badge">{criticalAssets.length}</span>
-            )}
-          </button>
-          <button 
-            type="button"
-            className={`nav-tab-btn ${activeTab === 'simulator' ? 'active' : ''}`}
-            onClick={() => {
-              setActiveTab('simulator');
-              setTimeout(() => {
-                const el = document.getElementById('ai-stress-simulator');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }, 100);
-            }}
-          >
-            <Cpu size={16} /> AI Simulator
-          </button>
-        </nav>
-
-        {/* Diagnostics & Timestamp */}
-        <div style={{ display: 'flex', gap: '1rem', color: 'var(--text-muted)', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '1.25rem', color: 'var(--text-muted)', alignItems: 'center', fontSize: '0.9rem' }}>
           <span><Activity size={18} style={{ verticalAlign: 'middle', marginRight: '5px' }} /> Live Diagnostics</span>
-          <span>{new Date().toLocaleDateString()}</span>
+          <span>{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
         </div>
       </header>
 
@@ -1061,16 +1015,6 @@ function App() {
             </div>
           )}
         </div>
-      ) : (
-        /* Full Dedicated Dashboard & Analytics Command Center */
-        <Dashboard
-          assets={assets}
-          reportedIssues={reportedIssues}
-          onLocateAsset={handleLocateAsset}
-          onNavigateToMap={() => setActiveTab('map')}
-          onAddCustomAsset={handleAddCustomAsset}
-        />
-      )}
 
         {/* Right Side Panel */}
         <div className="side-panel">
